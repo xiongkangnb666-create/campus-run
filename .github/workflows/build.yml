@@ -8,7 +8,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: unzip -o "*.zip"
+      - name: 解压并修复兼容语法
+        run: |
+          unzip -o "*.zip"
+          python3 - << 'EOF'
+          from pathlib import Path
+          p1 = Path("campus_run_ultimate/lib/core/theme/app_theme.dart")
+          p1.write_text(p1.read_text().replace("CardThemeData(", "CardTheme("))
+          p2 = Path("campus_run_ultimate/lib/data/services/gpx_kml_codec.dart")
+          p2.write_text(p2.read_text().replace("doc.findAllElements('name').firstOrNull", "(doc.findAllElements('name').isEmpty ? null : doc.findAllElements('name').first)"))
+          p3 = Path("campus_run_ultimate/lib/presentation/desktop/track_replay_page.dart")
+          p3.write_text(p3.read_text().replace("_sessions.where((s) => s.id == id).firstOrNull", "(_sessions.where((s) => s.id == id).isEmpty ? null : _sessions.where((s) => s.id == id).first)"))
+          p4 = Path("campus_run_ultimate/android/app/build.gradle.kts")
+          p4.write_text(p4.read_text().replace("isMinifyEnabled = true", "isMinifyEnabled = false").replace("isShrinkResources = true", "isShrinkResources = false"))
+          EOF
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -38,8 +51,11 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
-      - shell: pwsh
-        run: Get-ChildItem -Filter *.zip | Expand-Archive -DestinationPath . -Force
+      - name: 解压并修复兼容语法
+        shell: pwsh
+        run: |
+          Get-ChildItem -Filter *.zip | Expand-Archive -DestinationPath . -Force
+          python -c "from pathlib import Path; p1=Path('campus_run_ultimate/lib/core/theme/app_theme.dart'); p1.write_text(p1.read_text(encoding='utf-8').replace('CardThemeData(','CardTheme('),encoding='utf-8'); p2=Path('campus_run_ultimate/lib/data/services/gpx_kml_codec.dart'); p2.write_text(p2.read_text(encoding='utf-8').replace(\"doc.findAllElements('name').firstOrNull\",\"(doc.findAllElements('name').isEmpty ? null : doc.findAllElements('name').first)\"),encoding='utf-8'); p3=Path('campus_run_ultimate/lib/presentation/desktop/track_replay_page.dart'); p3.write_text(p3.read_text(encoding='utf-8').replace('_sessions.where((s) => s.id == id).firstOrNull','(_sessions.where((s) => s.id == id).isEmpty ? null : _sessions.where((s) => s.id == id).first)'),encoding='utf-8')"
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.29.3'
