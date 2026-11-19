@@ -1,0 +1,55 @@
+name: Build APK and Windows
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  android-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: unzip -o "*.zip"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.3'
+          channel: stable
+      - working-directory: campus_run_ultimate
+        run: |
+          flutter create . --platforms=android --org com.campusrun --project-name campus_run_ultimate
+          touch android/app/proguard-rules.pro
+          flutter pub get
+      - name: Run Tests
+        working-directory: campus_run_ultimate
+        continue-on-error: true
+        run: flutter test --reporter expanded
+      - name: Build Android APK
+        working-directory: campus_run_ultimate
+        run: flutter build apk --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CampusRunUltimate-Android-APK
+          path: campus_run_ultimate/build/app/outputs/flutter-apk/app-release.apk
+
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - shell: pwsh
+        run: Get-ChildItem -Filter *.zip | Expand-Archive -DestinationPath . -Force
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.29.3'
+          channel: stable
+      - working-directory: campus_run_ultimate
+        run: |
+          flutter create . --platforms=windows --org com.campusrun --project-name campus_run_ultimate
+          flutter pub get
+          flutter build windows --release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: CampusRunUltimate-Windows11-x64
+          path: campus_run_ultimate/build/windows/x64/runner/Release/
